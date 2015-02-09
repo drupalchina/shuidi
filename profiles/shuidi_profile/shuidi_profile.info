@@ -1,5 +1,5 @@
-name = Shuidi Profile
-description = The installation profile for the company site in China, developed by <a href="http://shuidi.org" target="_blank">Shuidi.org</a>.
+name = Shuidi
+description = Drupal中文开源企业站, developed by <a href="http://shuidi.org" target="_blank">Shuidi.org</a>.
 version = VERSION
 core = 7.x
 ;the core modules
