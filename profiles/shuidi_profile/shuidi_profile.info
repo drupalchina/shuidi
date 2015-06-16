@@ -20,13 +20,15 @@ dependencies[] = dblog
 dependencies[] = search
 dependencies[] = shortcut
 dependencies[] = syslog
-dependencies[] = toolbar
+;dependencies[] = toolbar
 dependencies[] = field_ui
 dependencies[] = file
 dependencies[] = rdf
 dependencies[] = locale
 
 ;the community modules
+dependencies[] = admin_menu
+dependencies[] = admin_menu_toolbar
 dependencies[] = ckeditor
 dependencies[] = ctools
 ;dependencies[] = date
@@ -38,6 +40,7 @@ dependencies[] = ctools
 ;dependencies[] = jcarousel
 ;dependencies[] = link
 dependencies[] = libraries
+dependencies[] = module_filter
 ;dependencies[] = panels
 ;dependencies[] = pathauto
 ;dependencies[] = rules
