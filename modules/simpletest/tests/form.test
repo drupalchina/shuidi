@@ -691,6 +691,14 @@ class FormValidationTestCase extends DrupalWebTestCase {
   }
 
   /**
+   * Tests that a form with a disabled CSRF token can be validated.
+   */
+  function testDisabledToken() {
+    $this->drupalPost('form-test/validate-no-token', array(), 'Save');
+    $this->assertText('The form_test_validate_no_token form has been submitted successfully.');
+  }
+
+  /**
    * Tests partial form validation through #limit_validation_errors.
    */
   function testValidateLimitErrors() {
@@ -994,6 +1002,26 @@ class FormsElementsTableSelectFunctionalTest extends DrupalWebTestCase {
     $this->assertTrue(isset($errors['tableselect']), 'Option checker disallows invalid values for radio buttons.');
   }
 
+  /**
+   * Test presence of ajax functionality
+   */
+  function testAjax() {
+    $rows = array('row1', 'row2', 'row3');
+    // Test checkboxes (#multiple == TRUE).
+    foreach ($rows as $row) {
+      $element = 'tableselect[' . $row . ']';
+      $edit = array($element => TRUE);
+      $result = $this->drupalPostAJAX('form_test/tableselect/multiple-true', $edit, $element);
+      $this->assertFalse(empty($result), t('Ajax triggers on checkbox for @row.', array('@row' => $row)));
+    }
+    // Test radios (#multiple == FALSE).
+    $element = 'tableselect';
+    foreach ($rows as $row) {
+      $edit = array($element => $row);
+      $result = $this->drupalPostAjax('form_test/tableselect/multiple-false', $edit, $element);
+      $this->assertFalse(empty($result), t('Ajax triggers on radio for @row.', array('@row' => $row)));
+    }
+  }
 
   /**
    * Helper function for the option check test to submit a form while collecting errors.
@@ -1389,6 +1417,59 @@ class FormsFormStoragePageCacheTestCase extends DrupalWebTestCase {
     $this->assertText($build_id_first_rebuild, 'First build id as old build id on the page');
     $build_id_second_rebuild = $this->getFormBuildId();
     $this->assertNotEqual($build_id_first_rebuild, $build_id_second_rebuild, 'Build id changes on second rebuild.');
+  }
+}
+
+/**
+ * Test cache_form.
+ */
+class FormsFormCacheTestCase extends DrupalWebTestCase {
+  public static function getInfo() {
+    return array(
+      'name' => 'Form caching',
+      'description' => 'Tests storage and retrieval of forms from cache.',
+      'group' => 'Form API',
+    );
+  }
+
+  function setUp() {
+    parent::setUp('form_test');
+  }
+
+  /**
+   * Tests storing and retrieving the form from cache.
+   */
+  function testCacheForm() {
+    $form = drupal_get_form('form_test_cache_form');
+    $form_state = array('foo' => 'bar', 'build_info' => array('baz'));
+    form_set_cache($form['#build_id'], $form, $form_state);
+
+    $cached_form_state = array();
+    $cached_form = form_get_cache($form['#build_id'], $cached_form_state);
+
+    $this->assertEqual($cached_form['#build_id'], $form['#build_id'], 'Form retrieved from cache_form successfully.');
+    $this->assertEqual($cached_form_state['foo'], 'bar', 'Data retrieved from cache_form successfully.');
+  }
+
+  /**
+   * Tests changing form_cache_expiration.
+   */
+  function testCacheFormCustomExpiration() {
+    variable_set('form_cache_expiration', -1 * (24 * 60 * 60));
+
+    $form = drupal_get_form('form_test_cache_form');
+    $form_state = array('foo' => 'bar', 'build_info' => array('baz'));
+    form_set_cache($form['#build_id'], $form, $form_state);
+
+    // Clear expired entries from cache_form, which should include the entry we
+    // just stored. Without this, the form will still be retrieved from cache.
+    cache_clear_all(NULL, 'cache_form');
+
+    $cached_form_state = array();
+    $cached_form = form_get_cache($form['#build_id'], $cached_form_state);
+
+    $this->assertNull($cached_form, 'Expired form was not returned from cache.');
+    $this->assertTrue(empty($cached_form_state), 'No data retrieved from cache for expired form.');
   }
 }
 
@@ -2097,5 +2178,38 @@ class HTMLIdTestCase extends DrupalWebTestCase {
     $edit = array();
     $this->drupalPost(NULL, $edit, 'Save', array(), array(), 'form-test-html-id--2');
     $this->assertNoDuplicateIds('There are no duplicate IDs');
+  }
+}
+
+/**
+ * Tests for form textarea.
+ */
+class FormTextareaTestCase extends DrupalUnitTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Form textarea',
+      'description' => 'Tests form textarea related functions.',
+      'group' => 'Form API',
+    );
+  }
+
+  /**
+   * Tests that textarea value is properly set.
+   */
+  public function testValueCallback() {
+    $element = array();
+    $form_state = array();
+    $test_cases = array(
+      array(NULL, FALSE),
+      array(NULL, NULL),
+      array('', array('test')),
+      array('test', 'test'),
+      array('123', 123),
+    );
+    foreach ($test_cases as $test_case) {
+      list($expected, $input) = $test_case;
+      $this->assertIdentical($expected, form_type_textarea_value($element, $input, $form_state));
+    }
   }
 }

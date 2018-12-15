@@ -1248,6 +1248,7 @@ function path_to_theme() {
 function drupal_find_theme_functions($cache, $prefixes) {
   $implementations = array();
   $functions = get_defined_functions();
+  $theme_functions = preg_grep('/^(' . implode(')|(', $prefixes) . ')_/', $functions['user']);
 
   foreach ($cache as $hook => $info) {
     foreach ($prefixes as $prefix) {
@@ -1264,7 +1265,7 @@ function drupal_find_theme_functions($cache, $prefixes) {
       // intermediary suggestion.
       $pattern = isset($info['pattern']) ? $info['pattern'] : ($hook . '__');
       if (!isset($info['base hook']) && !empty($pattern)) {
-        $matches = preg_grep('/^' . $prefix . '_' . $pattern . '/', $functions['user']);
+        $matches = preg_grep('/^' . $prefix . '_' . $pattern . '/', $theme_functions);
         if ($matches) {
           foreach ($matches as $match) {
             $new_hook = substr($match, strlen($prefix) + 1);
@@ -1710,11 +1711,29 @@ function theme_status_messages($variables) {
  * copy if none of the enabled modules or the active theme implement any
  * preprocess or process functions or override this theme implementation.
  *
- * @param $variables
- *   An associative array containing the keys 'text', 'path', and 'options'.
- *   See the l() function for information about these variables.
+ * @param array $variables
+ *   An associative array containing the keys:
+ *   - text: The text of the link.
+ *   - path: The internal path or external URL being linked to. It is used as
+ *     the $path parameter of the url() function.
+ *   - options: (optional) An array that defaults to empty, but can contain:
+ *     - attributes: Can contain optional attributes:
+ *       - class: must be declared in an array. Example: 'class' =>
+ *         array('class_name1','class_name2').
+ *       - title: must be a string. Example: 'title' => 'Example title'
+ *       - Others are more flexible as long as they work with
+ *         drupal_attributes($variables['options']['attributes]).
+ *     - html: Boolean flag that tells whether text contains HTML or plain
+ *       text. If set to TRUE, the text value will not be sanitized so the
+         calling function must ensure that it already contains safe HTML.
+ *   The elements $variables['options']['attributes'] and
+ *   $variables['options']['html'] are used in this function similarly to the
+ *   way that $options['attributes'] and $options['html'] are used in l().
+ *   The link itself is built by the url() function, which takes
+ *   $variables['path'] and $variables['options'] as arguments.
  *
  * @see l()
+ * @see url()
  */
 function theme_link($variables) {
   return '<a href="' . check_plain(url($variables['path'], $variables['options'])) . '"' . drupal_attributes($variables['options']['attributes']) . '>' . ($variables['options']['html'] ? $variables['text'] : check_plain($variables['text'])) . '</a>';
@@ -1757,13 +1776,13 @@ function theme_link($variables) {
  *     http://www.w3.org/TR/WCAG-TECHS/H42.html for more information.
  */
 function theme_links($variables) {
-  $links = $variables['links'];
-  $attributes = $variables['attributes'];
+  $links = (array) $variables['links'];
+  $attributes = (array) $variables['attributes'];
   $heading = $variables['heading'];
   global $language_url;
   $output = '';
 
-  if (count($links) > 0) {
+  if (!empty($links)) {
     // Treat the heading first if it is present to prepend it to the
     // list of links.
     if (!empty($heading)) {
@@ -1791,7 +1810,8 @@ function theme_links($variables) {
     foreach ($links as $key => $link) {
       $class = array($key);
 
-      // Add first, last and active classes to the list of links to help out themers.
+      // Add first, last and active classes to the list of links to help out
+      // themers.
       if ($i == 1) {
         $class[] = 'first';
       }
@@ -1809,7 +1829,8 @@ function theme_links($variables) {
         $output .= l($link['title'], $link['href'], $link);
       }
       elseif (!empty($link['title'])) {
-        // Some links are actually not links, but we wrap these in <span> for adding title and class attributes.
+        // Some links are actually not links, but we wrap these in <span> for
+        // adding title and class attributes.
         if (empty($link['html'])) {
           $link['title'] = check_plain($link['title']);
         }
@@ -1974,7 +1995,7 @@ function theme_table($variables) {
   $empty = $variables['empty'];
 
   // Add sticky headers, if applicable.
-  if (count($header) && $sticky) {
+  if (!empty($header) && $sticky) {
     drupal_add_js('misc/tableheader.js');
     // Add 'sticky-enabled' class to the table to identify it for JS.
     // This is needed to target tables constructed by this function.
@@ -1988,7 +2009,7 @@ function theme_table($variables) {
   }
 
   // Format the table columns:
-  if (count($colgroups)) {
+  if (!empty($colgroups)) {
     foreach ($colgroups as $number => $colgroup) {
       $attributes = array();
 
@@ -2023,38 +2044,40 @@ function theme_table($variables) {
   }
 
   // Add the 'empty' row message if available.
-  if (!count($rows) && $empty) {
+  if (empty($rows) && $empty) {
     $header_count = 0;
-    foreach ($header as $header_cell) {
-      if (is_array($header_cell)) {
-        $header_count += isset($header_cell['colspan']) ? $header_cell['colspan'] : 1;
-      }
-      else {
-        $header_count++;
+    if (!empty($header)) {
+      foreach ($header as $header_cell) {
+        if (is_array($header_cell)) {
+          $header_count += isset($header_cell['colspan']) ? $header_cell['colspan'] : 1;
+        }
+        else {
+          $header_count++;
+        }
       }
     }
     $rows[] = array(array('data' => $empty, 'colspan' => $header_count, 'class' => array('empty', 'message')));
   }
 
   // Format the table header:
-  if (count($header)) {
+  if (!empty($header)) {
     $ts = tablesort_init($header);
     // HTML requires that the thead tag has tr tags in it followed by tbody
     // tags. Using ternary operator to check and see if we have any rows.
-    $output .= (count($rows) ? ' <thead><tr>' : ' <tr>');
+    $output .= (!empty($rows) ? ' <thead><tr>' : ' <tr>');
     foreach ($header as $cell) {
       $cell = tablesort_header($cell, $header, $ts);
       $output .= _theme_table_cell($cell, TRUE);
     }
     // Using ternary operator to close the tags based on whether or not there are rows
-    $output .= (count($rows) ? " </tr></thead>\n" : "</tr>\n");
+    $output .= (!empty($rows) ? " </tr></thead>\n" : "</tr>\n");
   }
   else {
     $ts = array();
   }
 
   // Format the table rows:
-  if (count($rows)) {
+  if (!empty($rows)) {
     $output .= "<tbody>\n";
     $flip = array('even' => 'odd', 'odd' => 'even');
     $class = 'even';
@@ -2074,7 +2097,7 @@ function theme_table($variables) {
         $attributes = array();
         $no_striping = FALSE;
       }
-      if (count($cells)) {
+      if (!empty($cells)) {
         // Add odd/even class
         if (!$no_striping) {
           $class = $flip[$class];
@@ -2618,7 +2641,7 @@ function template_preprocess_page(&$variables) {
   // Move some variables to the top level for themer convenience and template cleanliness.
   $variables['show_messages'] = $variables['page']['#show_messages'];
 
-  foreach (system_region_list($GLOBALS['theme']) as $region_key => $region_name) {
+  foreach (system_region_list($GLOBALS['theme'], REGIONS_ALL, FALSE) as $region_key) {
     if (!isset($variables['page'][$region_key])) {
       $variables['page'][$region_key] = array();
     }
