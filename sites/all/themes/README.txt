@@ -1,29 +1,14 @@
-Themes allow you to change the look and feel of your Drupal site. You can use
-themes contributed by others or create your own.
+Place downloaded and custom themes that modify your site's appearance in this
+directory to ensure clean separation from Drupal core and to facilitate safe,
+self-contained code updates. Contributed themes from the Drupal community may
+be downloaded at http://drupal.org/project/themes.
 
-WHAT TO PLACE IN THIS DIRECTORY?
---------------------------------
+It is safe to organize themes into subdirectories and is recommended to use
+Drupal's sub-theme functionality to ensure easy maintenance and upgrades.
 
-Placing downloaded and custom themes in this directory separates downloaded and
-custom themes from Drupal core's themes. This allows Drupal core to be updated
-without overwriting these files.
+In multisite configuration, themes found in this directory are available to
+all sites. Alternatively, the sites/your_site_name/themes directory pattern may
+be used to restrict themes to a specific site instance.
 
-DOWNLOAD ADDITIONAL THEMES
---------------------------
-
-Contributed themes from the Drupal community may be downloaded at
-https://www.drupal.org/project/project_theme.
-
-MULTISITE CONFIGURATION
------------------------
-
-In multisite configurations, themes found in this directory are available to
-all sites. Alternatively, the sites/your_site_name/themes directory pattern
-may be used to restrict themes to a specific site instance.
-
-MORE INFORMATION
------------------
-
-Refer to the "Appearance" section of the README.txt in the Drupal root directory
-for further information on customizing the appearance of Drupal with custom
-themes.
+Refer to the "Appearance" section of the README.txt in the Drupal root
+directory for further information on theming.

@@ -4,3 +4,11 @@ sites/*/settings*.php
 # Ignore paths that contain user-generated content.
 sites/*/files
 sites/*/private
+.idea/
+.DS_Store
+._.DS_Store
+.ftpconfig
+.vscode
+.project
+.buildpath
+.settings
