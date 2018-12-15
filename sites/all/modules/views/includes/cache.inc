@@ -6,11 +6,13 @@
  */
 
 /**
- * Fetch Views' data from the cache
+ * Fetch Views' data from the cache.
  *
- * @param $move
- *   Under certain circumstances it makes sense to not get the moved table, but the old one.
- *   One example is views_get_handler.
+ * @param string $table
+ * @param bool $move
+ *   Under certain circumstances it makes sense to not get the moved table, but
+ *   the old one. One example is views_get_handler.
+ * @param bool $reset
  */
 function _views_fetch_data($table = NULL, $move = TRUE, $reset = FALSE) {
   $cache = &drupal_static(__FUNCTION__ . '_cache');
@@ -67,12 +69,11 @@ function _views_fetch_data($table = NULL, $move = TRUE, $reset = FALSE) {
   }
   else {
     if (!$fully_loaded) {
-      $data = views_cache_get('views_data', TRUE);
-      if (!empty($data->data)) {
+      if ($data = views_cache_get('views_data', TRUE)) {
         $cache = $data->data;
       }
-
-      if (empty($cache)) {
+      else {
+        // No cache entry, rebuild.
         $cache = _views_fetch_data_build();
       }
       $fully_loaded = TRUE;
@@ -101,7 +102,8 @@ function _views_fetch_data_build() {
 }
 
 /**
- * Links tables having an 'entity type' specified to the respective generic entity-type tables.
+ * Links tables having an 'entity type' specified to the respective generic
+ * entity-type tables.
  */
 function _views_data_process_entity_types(&$data) {
   foreach ($data as $table_name => $table_info) {
@@ -127,19 +129,32 @@ function _views_data_process_entity_types(&$data) {
 function _views_fetch_plugin_data($type = NULL, $plugin = NULL, $reset = FALSE) {
   static $cache = NULL;
   if (!isset($cache) || $reset) {
-    $start = microtime(TRUE);
-    views_include('plugins');
-    views_include_handlers();
-
-    $cache = views_discover_plugins();
-
+    // Load necessary code once.
+    if (!isset($cache)) {
+      views_include('plugins');
+      views_include_handlers();
+    }
+    // Because plugin data contains translated strings, and as such can be
+    // expensive to build, the results are cached per language.
+    global $language;
+    $cache_key = 'views:plugin_data:' . $language->language;
+    if (!$reset) {
+      if ($cache = cache_get($cache_key)) {
+        $cache = $cache->data;
+      }
+    }
+    // If not available in the cache, build it and cache it.
+    if (!$cache || $reset) {
+      $cache = views_discover_plugins();
+      cache_set($cache_key, $cache);
+    }
   }
 
   if (!$type && !$plugin) {
     return $cache;
   }
   elseif (!$plugin) {
-    // Not in the if above so the else below won't run
+    // Not in the if above so the else below won't run.
     if (isset($cache[$type])) {
       return $cache[$type];
     }
@@ -157,12 +172,13 @@ function _views_fetch_plugin_data($type = NULL, $plugin = NULL, $reset = FALSE) 
  *
  * This is just a convenience wrapper around cache_set().
  *
- * @param $cid
+ * @param string $cid
  *   The cache ID of the data to store.
- * @param $data
- *   The data to store in the cache. Complex data types will be automatically serialized before insertion.
- *   Strings will be stored as plain text and not serialized.
- * @param $use_language
+ * @param mixed $data
+ *   The data to store in the cache. Complex data types will be automatically
+ *   serialized before insertion. Strings will be stored as plain text and not
+ *   serialized.
+ * @param bool $use_language
  *   If TRUE, the data will be cached specific to the currently active language.
  */
 function views_cache_set($cid, $data, $use_language = FALSE) {
@@ -186,7 +202,8 @@ function views_cache_set($cid, $data, $use_language = FALSE) {
  * @param int $cid
  *   The cache ID of the data to retrieve.
  * @param bool $use_language
- *   If TRUE, the data will be requested specific to the currently active language.
+ *   If TRUE, the data will be requested specific to the currently active
+ *   language.
  *
  * @return stdClass|bool
  *   The cache or FALSE on failure.
